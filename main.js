@@ -1,3 +1,8 @@
+/**
+ * @param {function()} callback - Called when the request results have been
+ *  formatted for rendering
+ * @param {function(string)} errorCallback - Called when the request fails
+ */
 function getJIRAFeed(callback, errorCallback){
     var user = document.getElementById("user").value;
     if(user == undefined) return;
@@ -8,13 +13,14 @@ function getJIRAFeed(callback, errorCallback){
       callback(url, response);
     }, errorCallback);
 }
+
 /**
  * @param {string} searchTerm - Search term for JIRA Query.
  * @param {function(string)} callback - Called when the query results have been  
  *   formatted for rendering.
  * @param {function(string)} errorCallback - Called when the query or call fails.
  */
-async function getQueryResults(s, callback, errorCallback) {                                                 
+async function getQueryResults(s, callback, errorCallback) {
     try {
       var response = await make_request(s, "json");
       callback(createHTMLElementResult(response));
@@ -23,6 +29,11 @@ async function getQueryResults(s, callback, errorCallback) {
     }
 }
 
+/**
+ * @param {string} url - The url to request data from
+ * @param {property} responseType - The type of the response
+ * @returns - A Promise to fulfill a request
+ */
 function make_request(url, responseType) {
   return new Promise(function(resolve, reject) {
     var req = new XMLHttpRequest();
@@ -53,8 +64,9 @@ function make_request(url, responseType) {
   });
 }
 
-
-
+/**
+ * Saves the query options to chrome storage
+ */
 function loadOptions(){
   chrome.storage.sync.get({
     project: 'Sunshine',
@@ -64,6 +76,10 @@ function loadOptions(){
     document.getElementById('user').value = items.user;
   });
 }
+
+/**
+ * @param {function()} callback - Called when the query has been built
+ */
 function buildJQL(callback) {
   var callbackBase = "https://jira.secondlife.com/rest/api/2/search?jql=";
   var project = document.getElementById("project").value;
@@ -73,31 +89,58 @@ function buildJQL(callback) {
   fullCallbackUrl += `project=${project}+and+status=${status}+and+status+changed+to+${status}+before+-${inStatusFor}d&fields=id,status,key,assignee,summary&maxresults=100`;
   callback(fullCallbackUrl);
 }
+
+/**
+ * @param {string} response - The response from a query
+ * @returns {string} - A collection of fields for each entry in the
+ *  response
+ */
 function createHTMLElementResult(response){
 
-// 
-// Create HTML output to display the search results.
-// results.json in the "json_results" folder contains a sample of the API response
-// hint: you may run the application as well if you fix the bug. 
-// 
+  var responseSummary = document.createElement('p');
 
-  return '<p>There may be results, but you must read the response and display them.</p>';
+  for(var index=response['startAt']; index<response['total']; index++) {
+    var hr_elem = document.createElement('hr');
+    var pSummary = document.createElement('p');
+    var summaryStr = "";
+
+    // collect a summary of each entry
+    summaryStr =
+    " <b>Summary:</b> " + response['issues'][index]['fields']['summary'] + "<br>" +
+    "  <b>Status:</b> " + response['issues'][index]['fields']['status']['description'] + "<br>" +
+    "<b>Assignee:</b> ";
+    
+    if(response['issues'][index]['fields']['assignee']) {
+      summaryStr += response['issues'][index]['fields']['assignee']['name'] + " - " +
+      response['issues'][index]['fields']['assignee']['displayName'];
+    }
+    summaryStr += "<br>";
+
+    pSummary.innerHTML = summaryStr;
+
+    // append each entry to the responseSummary
+    responseSummary.appendChild(pSummary);
+    responseSummary.appendChild(hr_elem);
+
+  }
+
+  return responseSummary.outerHTML;
   
 }
 
-// utility 
+/**
+ * @param {string} str - string to convert
+ */
 function domify(str){
   var dom = (new DOMParser()).parseFromString('<!doctype html><body>' + str,'text/html');
   return dom.body.textContent;
 }
 
+/**
+ * @returns - A Promise which checks if a project exists
+ */
 function checkProjectExists(){
-    try {
-      return await make_request("https://jira.secondlife.com/rest/api/2/project/SUN", "json");
-    } catch (errorMessage) {
-      document.getElementById('status').innerHTML = 'ERROR. ' + errorMessage;
-      document.getElementById('status').hidden = false;
-    }
+  return make_request("https://jira.secondlife.com/rest/api/2/project/SUN", "json");  
 }
 
 // Setup
