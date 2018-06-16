@@ -99,33 +99,39 @@ function createHTMLElementResult(response){
 
   var responseSummary = document.createElement('p');
 
-  for(var index=response['startAt']; index<response['total']; index++) {
-    var hr_elem = document.createElement('hr');
-    var pSummary = document.createElement('p');
-    var summaryStr = "";
-    var issue = response['issues'][index]['fields'];
+  if(response['total'] > 0) {
 
-    // collect a summary of each entry
-    summaryStr =
-      "<b>Id:</b> " + response['issues'][index]['key'] + "<br>" +
-      "<b>Summary:</b> " + issue['summary'] + "<br>" +
-      "<b>Status:</b> " + issue['status']['description'] + "<br>" +
-      "<b>Assignee:</b> ";
-    
-    // need to check if a ticket has been assigned before accessing its fields
-    if(issue['assignee']) {
-      summaryStr += 
-        issue['assignee']['name'] + " - " +
-        issue['assignee']['displayName'];
+    for(var index=response['startAt']; index<response['total']; index++) {
+      var hr_elem = document.createElement('hr');
+      var pSummary = document.createElement('p');
+      var summaryStr = "";
+      var issue = response['issues'][index]['fields'];
+
+      // collect a summary of each entry
+      summaryStr =
+        "<b>Id:</b> " + response['issues'][index]['key'] + "<br>" +
+        "<b>Summary:</b> " + issue['summary'] + "<br>" +
+        "<b>Status:</b> " + issue['status']['description'] + "<br>" +
+        "<b>Assignee:</b> ";
+      
+      // need to check if a ticket has been assigned before accessing its fields
+      if(issue['assignee']) {
+        summaryStr += 
+          issue['assignee']['name'] + " - " +
+          issue['assignee']['displayName'];
+      }
+      summaryStr += "<br>";
+
+      pSummary.innerHTML = summaryStr;
+
+      // append each entry to the responseSummary
+      responseSummary.appendChild(pSummary);
+      responseSummary.appendChild(hr_elem);
+
     }
-    summaryStr += "<br>";
 
-    pSummary.innerHTML = summaryStr;
-
-    // append each entry to the responseSummary
-    responseSummary.appendChild(pSummary);
-    responseSummary.appendChild(hr_elem);
-
+  } else {
+    responseSummary.innerHTML = "There are no query results";
   }
 
   return responseSummary.outerHTML;
@@ -180,38 +186,54 @@ function performJIRASearch() {
 }
 
 /**
+ * Create an HTML collection for displaying the results of an
+ * activity query
+ * @param {string} xmlDoc - XML document of the query results
+ */
+function createHTMLActivityResult(xmlDoc) {
+  var feed = xmlDoc.getElementsByTagName('feed');
+  var entries = feed[0].getElementsByTagName("entry");
+  var result = document.createElement('p');
+
+  if(entries.length > 0) {
+    var list = document.createElement('ul');
+
+    for (var index = 0; index < entries.length; index++) {
+      var html = entries[index].getElementsByTagName("title")[0].innerHTML;
+      var updated = entries[index].getElementsByTagName("updated")[0].innerHTML;
+      var item = document.createElement('li');
+      item.innerHTML = new Date(updated).toLocaleString() + " - " + domify(html);
+      list.appendChild(item);
+    }
+
+    result.innerHTML = list.outerHTML;
+
+  } else {
+    result.innerHTML = "There are no activity results.";
+  }
+
+  return result.outerHTML;
+
+}
+
+/**
  * Collect and display the results of a JIRA feed query
  */
 function collectJIRAFeed() {
   // get the xml feed
   getJIRAFeed(function(url, xmlDoc) {
           
-  updateStatus('Activity query: ' + url + '\n');
+    updateStatus('Activity query: ' + url + '\n');
 
-  // render result
-  var feed = xmlDoc.getElementsByTagName('feed');
-  var entries = feed[0].getElementsByTagName("entry");
-  var list = document.createElement('ul');
-
-  for (var index = 0; index < entries.length; index++) {
-    var html = entries[index].getElementsByTagName("title")[0].innerHTML;
-    var updated = entries[index].getElementsByTagName("updated")[0].innerHTML;
-    var item = document.createElement('li');
-    item.innerHTML = new Date(updated).toLocaleString() + " - " + domify(html);
-    list.appendChild(item);
-  }
-
-  var feedResultDiv = document.getElementById('query-result');
-  if(list.childNodes.length > 0){
-    feedResultDiv.innerHTML = list.outerHTML;
-  } else {
-    updateStatus('There are no activity results.');
-  }
+    // render result
+    var result = createHTMLActivityResult(xmlDoc);
+    
+    var feedResultDiv = document.getElementById('query-result');
+    feedResultDiv.innerHTML = result;
+    feedResultDiv.hidden = false;
   
-  feedResultDiv.hidden = false;
-
   }, function(errorMessage) {
-  updateStatus('ERROR. ' + errorMessage);
+    updateStatus('ERROR. ' + errorMessage);
   });
 }
 
