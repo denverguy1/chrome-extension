@@ -106,10 +106,11 @@ function createHTMLElementResult(response){
       var pSummary = document.createElement('p');
       var summaryStr = "";
       var issue = response['issues'][index]['fields'];
+      var key = response['issues'][index]['key'];
 
       // collect a summary of each entry
       summaryStr =
-        "<b>Id:</b> " + response['issues'][index]['key'] + "<br>" +
+        "<b>Id:</b> <a href=https://jira.secondlife.com/browse/" + key + ">" + key + "</a><br>" +
         "<b>Summary:</b> " + issue['summary'] + "<br>" +
         "<b>Status:</b> " + issue['status']['description'] + "<br>" +
         "<b>Assignee:</b> ";
